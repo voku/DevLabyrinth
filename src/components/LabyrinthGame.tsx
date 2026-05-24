@@ -322,6 +322,11 @@ export default function LabyrinthGame({ phase, onActionComplete }: LabyrinthGame
       onActionComplete('Folklore Apprentice');
     }
 
+    if (finalX < 0 || finalX >= GRID_SIZE || finalY < 0 || finalY >= GRID_SIZE) {
+      addLog('error', `Trapdoor activation failed: destination (${finalX}, ${finalY}) is outside the labyrinth bounds.`);
+      return null;
+    }
+
     setPlayerPosition({ x: finalX, y: finalY });
     const cellName = gridMap[finalY][finalX].label || `Room (${finalX}, ${finalY})`;
     setStepSequence(prev => [...prev, `${cellName} (${finalX}, ${finalY})`]);
@@ -447,6 +452,7 @@ export default function LabyrinthGame({ phase, onActionComplete }: LabyrinthGame
           break;
         case 'Enter':
           if (currentTrapdoorId) {
+            e.preventDefault();
             activateTrapdoor(currentTrapdoorId);
           }
           break;
