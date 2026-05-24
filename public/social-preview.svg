@@ -1,0 +1,15 @@
+<svg width="1200" height="630" viewBox="0 0 1200 630" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1200" height="630" fill="#020617"/>
+  <rect x="48" y="48" width="1104" height="534" rx="32" fill="#0F172A" stroke="#1E293B" stroke-width="2"/>
+  <path d="M146 160H410V232H218V322H338V394H146V160Z" stroke="#F59E0B" stroke-width="24" stroke-linejoin="round"/>
+  <path d="M410 160V394H266" stroke="#E2E8F0" stroke-width="24" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="400" cy="384" r="24" fill="#F59E0B"/>
+  <text x="500" y="228" fill="#F8FAFC" font-family="Inter, Arial, sans-serif" font-size="68" font-weight="700">The Singleton Labyrinth</text>
+  <text x="500" y="302" fill="#F59E0B" font-family="JetBrains Mono, monospace" font-size="26" font-weight="700" letter-spacing="0.18em">INTERACTIVE ESSAY GAME</text>
+  <text x="500" y="380" fill="#CBD5E1" font-family="Inter, Arial, sans-serif" font-size="34">
+    <tspan x="500" dy="0">Walk the maze of hidden state, brittle tests, and</tspan>
+    <tspan x="500" dy="48">architecture shortcuts caused by Singleton patterns.</tspan>
+  </text>
+  <rect x="500" y="444" width="250" height="58" rx="16" fill="#F59E0B" fill-opacity="0.12" stroke="#F59E0B"/>
+  <text x="532" y="481" fill="#FDE68A" font-family="JetBrains Mono, monospace" font-size="24" font-weight="700">voku.github.io</text>
+</svg>
