@@ -461,7 +461,7 @@ export default function LabyrinthGame({ phase, onActionComplete }: LabyrinthGame
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [currentTrapdoorId, playerPosition, phase, globalTenantState, isTestResetInjected, isTestingRunning]);
+  }, [playerPosition, phase, globalTenantState, isTestResetInjected, isTestingRunning]);
 
   // --- DIAGNOSTIC SCANNERS ---
   const runArcheologyScan = () => {

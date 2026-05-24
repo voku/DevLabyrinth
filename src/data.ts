@@ -82,7 +82,7 @@ class Database {
     },
     labyrinthPhase: "first_shortcut",
     interactiveChallenge: {
-      instruction: "Step onto the newly bored trapdoor (the glowing green DB portal), then choose to trigger the shortcut yourself. Experience the convenience of global reachability without forced auto-jumps.",
+      instruction: "Step onto the new trapdoor (the glowing green DB portal), then choose to trigger the shortcut yourself. Experience the convenience of global reachability without forced auto-jumps.",
       successCondition: "Stand on the green DB trapdoor and trigger the shortcut intentionally.",
       badgeName: "Instant Teleporter"
     }
