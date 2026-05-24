@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   Compass, 
@@ -225,10 +225,16 @@ export default function LabyrinthGame({ phase, onActionComplete }: LabyrinthGame
     return map;
   };
 
-  const gridMap = getGridMap();
+  const gridMap = useMemo(() => getGridMap(), [difficulty, phase]);
   const consoleEndRef = useRef<HTMLDivElement>(null);
-  const currentTile = gridMap[playerPosition.y][playerPosition.x];
-  const currentTrapdoorId = currentTile?.type === 'trapdoor' ? currentTile.trapdoorId : undefined;
+  const currentTile = useMemo(
+    () => gridMap[playerPosition.y][playerPosition.x],
+    [gridMap, playerPosition.x, playerPosition.y]
+  );
+  const currentTrapdoorId = useMemo(
+    () => currentTile?.type === 'trapdoor' ? currentTile.trapdoorId : undefined,
+    [currentTile]
+  );
 
   // --- LOGGING UTILITY ---
   const addLog = (type: GameLog['type'], message: string, details?: string) => {
@@ -450,13 +456,8 @@ export default function LabyrinthGame({ phase, onActionComplete }: LabyrinthGame
           e.preventDefault();
           moveCharacter(1, 0);
           break;
-        case 'Enter':
-          if (currentTrapdoorId) {
-            e.preventDefault();
-            activateTrapdoor(currentTrapdoorId);
-          }
-          break;
         case ' ':
+        case 'Enter':
           e.preventDefault();
           if (currentTrapdoorId) {
             activateTrapdoor(currentTrapdoorId);
