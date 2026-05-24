@@ -291,6 +291,7 @@ export default function LabyrinthGame({ phase, onActionComplete }: LabyrinthGame
   const activateTrapdoor = (trapdoorId: string) => {
     const config = TRAPDOORS_CONFIG[trapdoorId];
     if (!config) {
+      addLog('error', `Trapdoor activation failed: no configuration found for "${trapdoorId}".`);
       return null;
     }
 
@@ -445,9 +446,13 @@ export default function LabyrinthGame({ phase, onActionComplete }: LabyrinthGame
           moveCharacter(1, 0);
           break;
         case 'Enter':
-        case ' ':
           if (currentTrapdoorId) {
-            e.preventDefault();
+            activateTrapdoor(currentTrapdoorId);
+          }
+          break;
+        case ' ':
+          e.preventDefault();
+          if (currentTrapdoorId) {
             activateTrapdoor(currentTrapdoorId);
           }
           break;
@@ -1049,7 +1054,11 @@ export default function LabyrinthGame({ phase, onActionComplete }: LabyrinthGame
                 <ArrowLeft className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform" />
               </button>
               <button
-                onClick={() => currentTrapdoorId && activateTrapdoor(currentTrapdoorId)}
+                onClick={() => {
+                  if (currentTrapdoorId) {
+                    activateTrapdoor(currentTrapdoorId);
+                  }
+                }}
                 disabled={!currentTrapdoorId}
                 title={currentTrapdoorId ? 'Activate the trapdoor under your feet' : 'Stand on a trapdoor to enable jump'}
                 className={`w-10 h-10 rounded-lg flex items-center justify-center text-[10px] font-mono font-bold border transition-all ${
