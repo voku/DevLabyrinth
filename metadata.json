@@ -1,0 +1,6 @@
+{
+  "name": "The Singleton Labyrinth",
+  "description": "An interactive, gamified journey explaining the hidden costs of Singleton patterns through walkable labyrinth traps and shared local mutable states.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
