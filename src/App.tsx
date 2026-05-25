@@ -60,7 +60,7 @@ export default function App() {
   const isMasterArchitect = unlockedBadges.length === CHAPTERS.length;
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-800 font-sans flex flex-col justify-between pb-16 lg:pb-0">
+    <div className="min-h-screen bg-slate-50 text-slate-800 font-sans flex flex-col justify-between overflow-x-hidden pb-16 xl:pb-0">
       {/* Dynamic Header */}
       <header className="bg-slate-900 text-white py-6 border-b border-slate-800 shadow-sm relative overflow-hidden shrink-0">
         <div className="absolute inset-0 bg-radial-at-t from-amber-500/10 via-transparent to-transparent opacity-60 pointer-events-none" />
@@ -101,10 +101,10 @@ export default function App() {
       </header>
 
       {/* Main Container Layout */}
-      <main className="flex-1 max-w-7xl w-full mx-auto p-4 md:p-6 flex flex-col lg:flex-row gap-6 items-stretch justify-start lg:h-[840px] h-auto">
+      <main className="app-main-shell flex-1 max-w-7xl w-full mx-auto p-4 md:p-6 flex flex-col xl:flex-row gap-6 items-stretch justify-start h-auto">
         
         {/* LEFT COLUMN: INTERACTIVE LABYRINTH BOARD MODULE */}
-        <div className="flex-[4] flex flex-col justify-stretch lg:h-full">
+        <div className="flex-[4] flex min-h-0 flex-col justify-stretch xl:h-full">
           <LabyrinthGame 
             phase={currentChapter.labyrinthPhase} 
             onActionComplete={handleActionComplete} 
@@ -112,7 +112,7 @@ export default function App() {
         </div>
 
         {/* RIGHT COLUMN: BOOK STORIES & TEXT PANELS */}
-        <div className="flex-[5] flex flex-col justify-stretch lg:h-full">
+        <div className="flex-[5] flex min-h-0 flex-col justify-stretch xl:h-full">
           <StoryPanel
             currentChapter={currentChapter}
             totalChapters={CHAPTERS.length}
@@ -126,7 +126,7 @@ export default function App() {
       </main>
 
       {/* LOWER DASHBOARD: TROPHY COLLECTION & LESSONS MAP */}
-      <section className="bg-slate-900 text-slate-200 py-6 border-t border-slate-800 max-h-[220px] overflow-y-auto shrink-0">
+      <section className="bg-slate-900 text-slate-200 py-6 border-t border-slate-800 xl:max-h-[220px] xl:overflow-y-auto shrink-0">
         <div className="max-w-7xl mx-auto px-4 md:px-8">
           <div className="flex items-center justify-between mb-4">
             <h3 className="font-display font-medium text-xs tracking-wider text-slate-400 uppercase flex items-center gap-2">
@@ -198,7 +198,7 @@ export default function App() {
       </footer>
 
       {/* Floating Sticky Mobile Navigation Bar */}
-      <div className="lg:hidden fixed bottom-0 left-0 right-0 bg-slate-900/95 backdrop-blur-md border-t border-slate-800 text-white p-3 z-40 flex items-center justify-between shadow-2xl px-4 select-none">
+      <div className="xl:hidden fixed bottom-0 left-0 right-0 bg-slate-900/95 backdrop-blur-md border-t border-slate-800 text-white p-3 z-40 flex items-center justify-between shadow-2xl px-4 select-none">
         <button
           onClick={handlePrevChapter}
           disabled={currentChapterIndex === 0}

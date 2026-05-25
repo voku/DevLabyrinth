@@ -51,3 +51,16 @@ pre {
   box-shadow: 0 0 15px currentColor;
 }
 
+@media (min-width: 80rem) {
+  .app-main-shell {
+    height: min(840px, calc(100vh - 15rem));
+  }
+}
+
+@supports (height: 100dvh) {
+  @media (min-width: 80rem) {
+    .app-main-shell {
+      height: min(840px, calc(100dvh - 15rem));
+    }
+  }
+}

@@ -46,4 +46,44 @@ describe('LabyrinthGame', () => {
 
     expect((screen.getByRole('checkbox') as HTMLInputElement).checked).toBe(false);
   });
+
+  it('keeps the initial console autoscroll inside the log panel', async () => {
+    const originalScrollHeight = Object.getOwnPropertyDescriptor(HTMLElement.prototype, 'scrollHeight');
+    const originalClientHeight = Object.getOwnPropertyDescriptor(HTMLElement.prototype, 'clientHeight');
+    const scrollIntoViewSpy = vi.spyOn(HTMLElement.prototype, 'scrollIntoView').mockImplementation(() => {});
+
+    Object.defineProperty(HTMLElement.prototype, 'scrollHeight', {
+      configurable: true,
+      get: () => 120
+    });
+
+    Object.defineProperty(HTMLElement.prototype, 'clientHeight', {
+      configurable: true,
+      get: () => 40
+    });
+
+    try {
+      render(<LabyrinthGame phase="classic_corridor" onActionComplete={vi.fn()} />);
+
+      const consoleOutput = screen.getByLabelText('Stack Trace Console Output');
+
+      await waitFor(() => {
+        expect(consoleOutput.scrollTop).toBe(80);
+      });
+
+      expect(scrollIntoViewSpy).not.toHaveBeenCalled();
+    } finally {
+      if (originalScrollHeight) {
+        Object.defineProperty(HTMLElement.prototype, 'scrollHeight', originalScrollHeight);
+      } else {
+        Reflect.deleteProperty(HTMLElement.prototype, 'scrollHeight');
+      }
+
+      if (originalClientHeight) {
+        Object.defineProperty(HTMLElement.prototype, 'clientHeight', originalClientHeight);
+      } else {
+        Reflect.deleteProperty(HTMLElement.prototype, 'clientHeight');
+      }
+    }
+  });
 });
