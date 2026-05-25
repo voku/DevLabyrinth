@@ -253,7 +253,10 @@ export default function LabyrinthGame({ phase, onActionComplete }: LabyrinthGame
   // Scroll console to bottom on changes
   useEffect(() => {
     if (consoleScrollRef.current) {
-      const targetTop = consoleScrollRef.current.scrollHeight;
+      const targetTop = Math.max(
+        consoleScrollRef.current.scrollHeight - consoleScrollRef.current.clientHeight,
+        0
+      );
 
       if (typeof consoleScrollRef.current.scrollTo === 'function') {
         consoleScrollRef.current.scrollTo({
@@ -986,7 +989,7 @@ export default function LabyrinthGame({ phase, onActionComplete }: LabyrinthGame
                   key={`${x}-${y}`}
                   onClick={() => canMoveTo && moveCharacter(x - playerPosition.x, y - playerPosition.y)}
                   className={`
-                    size-[clamp(2.75rem,11vw,3.5rem)] rounded-lg border flex flex-col items-center justify-center transition-all relative select-none
+                    size-11 sm:size-12 md:size-14 rounded-lg border flex flex-col items-center justify-center transition-all relative select-none
                     ${canMoveTo ? 'cursor-pointer hover:scale-[1.02]' : 'cursor-default'}
                     ${bgStyle} ${glowStyle}
                   `}

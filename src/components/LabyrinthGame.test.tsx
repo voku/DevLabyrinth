@@ -57,17 +57,19 @@ describe('LabyrinthGame', () => {
       value: scrollToMock
     });
 
-    render(<LabyrinthGame phase="classic_corridor" onActionComplete={vi.fn()} />);
+    try {
+      render(<LabyrinthGame phase="classic_corridor" onActionComplete={vi.fn()} />);
 
-    await waitFor(() => {
-      expect(scrollToMock).toHaveBeenCalled();
-    });
+      await waitFor(() => {
+        expect(scrollToMock).toHaveBeenCalled();
+      });
 
-    expect(scrollIntoViewSpy).not.toHaveBeenCalled();
-
-    Object.defineProperty(HTMLElement.prototype, 'scrollTo', {
-      configurable: true,
-      value: originalScrollTo
-    });
+      expect(scrollIntoViewSpy).not.toHaveBeenCalled();
+    } finally {
+      Object.defineProperty(HTMLElement.prototype, 'scrollTo', {
+        configurable: true,
+        value: originalScrollTo
+      });
+    }
   });
 });
