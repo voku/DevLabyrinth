@@ -262,9 +262,18 @@ export default function LabyrinthGame({ phase, onActionComplete }: LabyrinthGame
     setPlayerPosition({ x: 0, y: 0 });
     setStepSequence(['Entrance (0,0)']);
     setVisitedCount(0);
+    setGlobalTenantState('NULL');
+    setGlobalUserState('NULL');
+    setHasMutatedState(false);
     setRedirectedToQ(false);
     setArcheologyReport(null);
     setIsArcheologyScanning(false);
+    setTests([]);
+    setIsTestingRunning(false);
+    setIsTestResetInjected(false);
+    setActiveCombIndex(0);
+    setTestRunnerStep(-1);
+    setActiveRunTestIdx(-1);
     
     // Initial informational logs
     setLogs([]);

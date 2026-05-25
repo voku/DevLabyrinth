@@ -207,8 +207,7 @@ export default function StoryPanel({
 
         <button
           onClick={onNextChapter}
-          disabled={isLast}
-          className={`px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white disabled:bg-slate-100 disabled:text-slate-400 disabled:cursor-not-allowed rounded-lg font-semibold text-xs flex items-center gap-1.5 transition-all active:scale-95`}
+          className={`px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-lg font-semibold text-xs flex items-center gap-1.5 transition-all active:scale-95`}
         >
           Next Chapter <ChevronRight className="w-4 h-4" />
         </button>
