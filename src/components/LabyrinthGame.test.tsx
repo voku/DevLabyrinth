@@ -21,9 +21,10 @@ describe('LabyrinthGame', () => {
     press('ArrowRight');
     press('ArrowRight');
     press('ArrowRight');
-    press('Enter');
 
-    expect(getAmbientRegister()).toBeTruthy();
+    await waitFor(() => {
+      expect(getAmbientRegister()).toBeTruthy();
+    });
 
     rerender(<LabyrinthGame phase="map_lying" onActionComplete={onActionComplete} />);
 

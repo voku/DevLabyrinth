@@ -229,6 +229,7 @@ export default function LabyrinthGame({ phase, onActionComplete }: LabyrinthGame
   const gridMap = useMemo(() => getGridMap(), [difficulty, phase]);
   const consoleScrollRef = useRef<HTMLDivElement>(null);
   const hasAutoScrolledConsoleRef = useRef(false);
+  const pendingTrapdoorJumpRef = useRef<number | null>(null);
   // --- LOGGING UTILITY ---
   const addLog = (type: GameLog['type'], message: string, details?: string) => {
     const timestamp = new Date().toLocaleTimeString();
@@ -265,6 +266,11 @@ export default function LabyrinthGame({ phase, onActionComplete }: LabyrinthGame
 
   // Handle phase transitions / initializes
   useEffect(() => {
+    if (pendingTrapdoorJumpRef.current !== null) {
+      window.clearTimeout(pendingTrapdoorJumpRef.current);
+      pendingTrapdoorJumpRef.current = null;
+    }
+
     // Reset player position when phase changes
     setPlayerPosition({ x: 0, y: 0 });
     setStepSequence(['Entrance (0,0)']);
@@ -309,6 +315,12 @@ export default function LabyrinthGame({ phase, onActionComplete }: LabyrinthGame
       addLog('success', 'Refactored clean corridors active! Dependency Injection binds explicit instances. AppConfig is static and safe.');
     }
   }, [phase]);
+
+  useEffect(() => () => {
+    if (pendingTrapdoorJumpRef.current !== null) {
+      window.clearTimeout(pendingTrapdoorJumpRef.current);
+    }
+  }, []);
 
   const activateTrapdoor = (trapdoorId: string, originPosition?: Position) => {
     const config = TRAPDOORS_CONFIG[trapdoorId];
@@ -402,7 +414,22 @@ export default function LabyrinthGame({ phase, onActionComplete }: LabyrinthGame
       if (config) {
         addLog('warning', `Trapdoor discovered: ${config.name}. Contact auto-triggered the hidden shortcut immediately.`, config.description);
       }
-      return activateTrapdoor(targetCell.trapdoorId, { x: nextX, y: nextY });
+      const trapdoorPosition = { x: nextX, y: nextY };
+      setPlayerPosition(trapdoorPosition);
+      const trapdoorName = gridMap[nextY][nextX].label || `Room (${nextX}, ${nextY})`;
+      setStepSequence(prev => [...prev, `${trapdoorName} (${nextX}, ${nextY})`]);
+      setVisitedCount(prev => prev + 1);
+
+      if (pendingTrapdoorJumpRef.current !== null) {
+        window.clearTimeout(pendingTrapdoorJumpRef.current);
+      }
+
+      pendingTrapdoorJumpRef.current = window.setTimeout(() => {
+        pendingTrapdoorJumpRef.current = null;
+        activateTrapdoor(targetCell.trapdoorId!, trapdoorPosition);
+      }, 0);
+
+      return trapdoorPosition;
     }
 
     // Phase 4 Map Lying specific bug: Attempting to walk to Room B (3,4) 
@@ -1073,7 +1100,7 @@ export default function LabyrinthGame({ phase, onActionComplete }: LabyrinthGame
               </button>
               <div
                 title="Singleton trapdoors auto-fire the moment you touch them"
-                className="w-10 h-10 rounded-lg flex items-center justify-center text-[10px] font-mono font-bold border bg-emerald-500/10 border-emerald-500/20 text-emerald-400/80"
+                className="w-10 h-10 rounded-lg flex items-center justify-center text-[10px] font-mono font-bold border border-dashed border-slate-700 bg-slate-950/60 text-slate-500"
               >
                 AUTO
               </div>
