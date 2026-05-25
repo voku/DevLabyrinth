@@ -82,8 +82,8 @@ class Database {
     },
     labyrinthPhase: "first_shortcut",
     interactiveChallenge: {
-      instruction: "Step into the newly bored trapdoor (the glowing green DB portal) to bypass the long corridor. Experience the convenience of global reachability!",
-      successCondition: "Step into the green DB trapdoor and trigger the instant transit.",
+      instruction: "Step onto the new trapdoor (the glowing green DB portal), then choose to trigger the shortcut yourself. Experience the convenience of global reachability without forced auto-jumps.",
+      successCondition: "Stand on the green DB trapdoor and trigger the shortcut intentionally.",
       badgeName: "Instant Teleporter"
     }
   },
@@ -124,7 +124,7 @@ class App {
     },
     labyrinthPhase: "folklore_chaos",
     interactiveChallenge: {
-      instruction: "Try to walk to the exit. Multiple trapdoors have popped up (Database, User, Config). Beware: stepping on one modifies global state, altering how other trapdoors behave!",
+      instruction: "Try to walk to the exit. Multiple trapdoors have popped up (Database, User, Config). Beware: activating one modifies global state, altering how other trapdoors behave!",
       successCondition: "Get confused or navigate the portal network to experience how global state mutability ruins predictability.",
       badgeName: "Folklore Apprentice"
     }

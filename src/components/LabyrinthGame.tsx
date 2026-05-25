@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   Compass, 
@@ -225,8 +225,16 @@ export default function LabyrinthGame({ phase, onActionComplete }: LabyrinthGame
     return map;
   };
 
-  const gridMap = getGridMap();
+  const gridMap = useMemo(() => getGridMap(), [difficulty, phase]);
   const consoleEndRef = useRef<HTMLDivElement>(null);
+  const currentTile = useMemo(
+    () => gridMap[playerPosition.y][playerPosition.x],
+    [gridMap, playerPosition.x, playerPosition.y]
+  );
+  const currentTrapdoorId = useMemo(
+    () => currentTile?.type === 'trapdoor' ? currentTile.trapdoorId : undefined,
+    [currentTile]
+  );
 
   // --- LOGGING UTILITY ---
   const addLog = (type: GameLog['type'], message: string, details?: string) => {
@@ -254,9 +262,18 @@ export default function LabyrinthGame({ phase, onActionComplete }: LabyrinthGame
     setPlayerPosition({ x: 0, y: 0 });
     setStepSequence(['Entrance (0,0)']);
     setVisitedCount(0);
+    setGlobalTenantState('NULL');
+    setGlobalUserState('NULL');
+    setHasMutatedState(false);
     setRedirectedToQ(false);
     setArcheologyReport(null);
     setIsArcheologyScanning(false);
+    setTests([]);
+    setIsTestingRunning(false);
+    setIsTestResetInjected(false);
+    setActiveCombIndex(0);
+    setTestRunnerStep(-1);
+    setActiveRunTestIdx(-1);
     
     // Initial informational logs
     setLogs([]);
@@ -265,9 +282,9 @@ export default function LabyrinthGame({ phase, onActionComplete }: LabyrinthGame
     if (phase === 'classic_corridor') {
       addLog('info', 'Clean environment instantiated. Navigate using corridors (Arrow keys or clicking buttons/cells). No hidden ports.');
     } else if (phase === 'first_shortcut') {
-      addLog('info', 'A green Database trapdoor has appeared at cell (1, 1). Stepping on it drops you directly close to the exit at (4,4). Try it out!');
+      addLog('info', 'A green Database trapdoor has appeared at cell (1, 1). Step onto it, then trigger Jump (or press Enter/Space) if you really want the shortcut to fire.');
     } else if (phase === 'folklore_chaos') {
-      addLog('warning', 'Multiple singletons detected. Mutable global variables are active. Stepping on a portal changes global runtime variables.');
+      addLog('warning', 'Multiple singletons detected. Mutable global variables are active. Activating a portal changes global runtime variables.');
       addLog('info', 'CurrentUser::instance() is live at (3,0). tenantId() is live at (4,1).');
     } else if (phase === 'map_lying') {
       addLog('warning', 'A severe production bug has been reported: players trying to reach room B (3,4) get mysteriously thrown into Room Q (0,4) instead!');
@@ -285,6 +302,57 @@ export default function LabyrinthGame({ phase, onActionComplete }: LabyrinthGame
       addLog('success', 'Refactored clean corridors active! Dependency Injection binds explicit instances. AppConfig is static and safe.');
     }
   }, [phase]);
+
+  const activateTrapdoor = (trapdoorId: string) => {
+    const config = TRAPDOORS_CONFIG[trapdoorId];
+    if (!config) {
+      addLog('error', `Trapdoor activation failed: no configuration found for "${trapdoorId}".`);
+      return null;
+    }
+
+    let finalX = config.target.x;
+    let finalY = config.target.y;
+
+    if (phase === 'first_shortcut') {
+      addLog('success', `⚡ Trapdoor triggered: ${config.name}! Bypassed 5 long corridors!`, `Telemetry: Teleported from (${playerPosition.x}, ${playerPosition.y}) to (${finalX}, ${finalY})`);
+      onActionComplete('Instant Teleporter');
+    } else if (phase === 'folklore_chaos') {
+      if (config.id === 'user_hole') {
+        setGlobalUserState('User_Session_Id_8923');
+        setHasMutatedState(true);
+        addLog('warning', `⚡ Global state mutated: CurrentUser::instance() cached ID to 'User_Session_Id_8923'`, 'All subsequent queries now run with this user context!');
+      } else if (config.id === 'tenant_hole') {
+        setGlobalTenantState('Tenant_Code_Alpha');
+        setHasMutatedState(true);
+        addLog('warning', `⚡ Global state mutated: TenantContext::instance() stored tenant = 'Tenant_Code_Alpha'`, 'This changed the ambient tenant filter.');
+      } else if (config.id === 'db_hole') {
+        if (globalTenantState === 'Tenant_Code_Alpha') {
+          finalX = 0;
+          finalY = 4;
+          addLog('error', '⚡ Trapdoor Error: Database resolve path altered by stale TenantContext state: Redirected to Room Q!', 'This is folklore in action.');
+        } else {
+          addLog('success', `⚡ Database shortcut jumped normally to (${finalX}, ${finalY}) because TenantContext state is clean.`);
+        }
+      }
+      onActionComplete('Folklore Apprentice');
+    }
+
+    if (finalX < 0 || finalX >= GRID_SIZE || finalY < 0 || finalY >= GRID_SIZE) {
+      addLog('error', `Trapdoor activation failed: destination (${finalX}, ${finalY}) is outside the labyrinth bounds.`);
+      return null;
+    }
+
+    setPlayerPosition({ x: finalX, y: finalY });
+    const cellName = gridMap[finalY][finalX].label || `Room (${finalX}, ${finalY})`;
+    setStepSequence(prev => [...prev, `${cellName} (${finalX}, ${finalY})`]);
+    setVisitedCount(prev => prev + 1);
+
+    if (finalX === 5 && finalY === 5) {
+      addLog('success', '🏆 Reached exit, but you relied on shortcut trapdoors.');
+    }
+
+    return { x: finalX, y: finalY };
+  };
 
   // --- CORE MOVEMENT RESOLVER ---
   const moveCharacter = (dx: number, dy: number, overrideStart?: Position) => {
@@ -320,43 +388,11 @@ export default function LabyrinthGame({ phase, onActionComplete }: LabyrinthGame
     // Resolve Movement
     let finalX = nextX;
     let finalY = nextY;
-    let extraLog = '';
-    let isPortalled = false;
 
-    // Phase specific trapdoor behavior
     if (targetCell.type === 'trapdoor' && targetCell.trapdoorId) {
       const config = TRAPDOORS_CONFIG[targetCell.trapdoorId];
       if (config) {
-        // Successful Portal Transition
-        finalX = config.target.x;
-        finalY = config.target.y;
-        isPortalled = true;
-
-        if (phase === 'first_shortcut') {
-          addLog('success', `⚡ Trapdoor triggered: ${config.name}! Bypassed 5 long corridors!`, `Telemetry: Teleported from (${nextX}, ${nextY}) to (${finalX}, ${finalY})`);
-          onActionComplete('Instant Teleporter');
-        } else if (phase === 'folklore_chaos') {
-          // In folklore chaos, portals mutate global state
-          if (config.id === 'user_hole') {
-            setGlobalUserState('User_Session_Id_8923');
-            setHasMutatedState(true);
-            addLog('warning', `⚡ Global state mutated: CurrentUser::instance() cached ID to 'User_Session_Id_8923'`, 'All subsequent queries now run with this user context!');
-          } else if (config.id === 'tenant_hole') {
-            setGlobalTenantState('Tenant_Code_Alpha');
-            setHasMutatedState(true);
-            addLog('warning', `⚡ Global state mutated: TenantContext::instance() stored tenant = 'Tenant_Code_Alpha'`, 'This changed the ambient tenant filter.');
-          } else if (config.id === 'db_hole') {
-            // Let's assume tenant state changes database resolution
-            if (globalTenantState === 'Tenant_Code_Alpha') {
-              finalX = 0;
-              finalY = 4; // Forced redirect to Room Q!
-              addLog('error', `⚡ Trapdoor Error: Database resolve path altered by stale TenantContext state: Redirected to Room Q!`, 'This is folklore in action.');
-            } else {
-              addLog('success', `⚡ Database shortcut jumped normally to (${finalX}, ${finalY}) because TenantContext state is clean.`);
-            }
-          }
-          onActionComplete('Folklore Apprentice');
-        }
+        addLog('info', `Trapdoor discovered: ${config.name}. You are standing on it now; trigger Jump (or press Enter/Space) to activate the hidden shortcut.`, config.description);
       }
     }
 
@@ -428,6 +464,13 @@ export default function LabyrinthGame({ phase, onActionComplete }: LabyrinthGame
         case 'D':
           e.preventDefault();
           moveCharacter(1, 0);
+          break;
+        case ' ':
+        case 'Enter':
+          e.preventDefault();
+          if (currentTrapdoorId) {
+            activateTrapdoor(currentTrapdoorId);
+          }
           break;
       }
     };
@@ -1026,9 +1069,22 @@ export default function LabyrinthGame({ phase, onActionComplete }: LabyrinthGame
               >
                 <ArrowLeft className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform" />
               </button>
-              <div className="w-10 h-10 bg-slate-900/50 border border-transparent rounded-lg flex items-center justify-center text-[10px] font-mono text-slate-600">
-                MOVE
-              </div>
+              <button
+                onClick={() => {
+                  if (currentTrapdoorId) {
+                    activateTrapdoor(currentTrapdoorId);
+                  }
+                }}
+                disabled={!currentTrapdoorId}
+                title={currentTrapdoorId ? 'Activate the trapdoor under your feet' : 'Stand on a trapdoor to enable jump'}
+                className={`w-10 h-10 rounded-lg flex items-center justify-center text-[10px] font-mono font-bold border transition-all ${
+                  currentTrapdoorId
+                    ? 'bg-emerald-500/10 border-emerald-500/40 text-emerald-400 hover:bg-emerald-500/20 active:scale-95'
+                    : 'bg-slate-900/50 border-transparent text-slate-600 cursor-not-allowed'
+                }`}
+              >
+                JUMP
+              </button>
               <button 
                 onClick={() => moveCharacter(1, 0)}
                 className="w-10 h-10 bg-slate-950 border border-slate-800 hover:border-slate-700 active:bg-slate-900 rounded-lg flex items-center justify-center text-slate-300 shadow-md group transition-all"
@@ -1044,7 +1100,7 @@ export default function LabyrinthGame({ phase, onActionComplete }: LabyrinthGame
                 <ArrowDown className="w-4 h-4 group-hover:translate-y-0.5 transition-transform" />
               </button>
             </div>
-            <span className="text-[10px] font-mono text-slate-500 mt-2">Keyboard Arrow Keys or W-A-S-D also active</span>
+            <span className="text-[10px] font-mono text-slate-500 mt-2">Keyboard Arrow Keys/W-A-S-D move. Enter/Space activates a trapdoor.</span>
           </div>
 
           {/* INTEGRATED TESTING CABINET (Unified Labs + State-Space Matrix) */}
@@ -1220,7 +1276,7 @@ export default function LabyrinthGame({ phase, onActionComplete }: LabyrinthGame
               <div className="bg-slate-950 border border-slate-800 p-4 rounded-xl space-y-2">
                 <h4 className="text-sm font-semibold text-slate-200 text-emerald-400">The Convenient Bait</h4>
                 <p className="text-xs text-slate-400">
-                  Step straight into cell <strong className="text-emerald-400">DB (1,1)</strong>. You skip the entire path and land instantly adjacent to the production exit.
+                  Step onto cell <strong className="text-emerald-400">DB (1,1)</strong>, then choose whether to trigger the shortcut. No more involuntary teleport nonsense.
                 </p>
                 <div className="flex items-center gap-2 p-1.5 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 rounded text-[11px]">
                   <Zap className="w-3 h-3 text-emerald-400" /> Convenient, but dangerous.
@@ -1233,7 +1289,7 @@ export default function LabyrinthGame({ phase, onActionComplete }: LabyrinthGame
               <div className="bg-slate-950 border border-slate-800 p-4 rounded-xl space-y-3">
                 <h4 className="text-sm font-semibold text-slate-200 text-purple-400">Underground Complications</h4>
                 <p className="text-xs text-slate-400">
-                  Try stepping on portals. Watch how they pollute global context, changing database resolution triggers downstream!
+                  Try activating portals on purpose. Watch how they pollute global context, changing database resolution triggers downstream!
                 </p>
                 <div className="space-y-1.5">
                   <div className="text-[11px] font-mono text-slate-500">PORTAL REGISTRIES:</div>
