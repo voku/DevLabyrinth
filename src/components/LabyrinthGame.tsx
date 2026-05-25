@@ -226,7 +226,8 @@ export default function LabyrinthGame({ phase, onActionComplete }: LabyrinthGame
   };
 
   const gridMap = useMemo(() => getGridMap(), [difficulty, phase]);
-  const consoleEndRef = useRef<HTMLDivElement>(null);
+  const consoleScrollRef = useRef<HTMLDivElement>(null);
+  const hasAutoScrolledConsoleRef = useRef(false);
   const currentTile = useMemo(
     () => gridMap[playerPosition.y][playerPosition.x],
     [gridMap, playerPosition.x, playerPosition.y]
@@ -251,8 +252,19 @@ export default function LabyrinthGame({ phase, onActionComplete }: LabyrinthGame
 
   // Scroll console to bottom on changes
   useEffect(() => {
-    if (consoleEndRef.current) {
-      consoleEndRef.current.scrollIntoView({ behavior: 'smooth' });
+    if (consoleScrollRef.current) {
+      const targetTop = consoleScrollRef.current.scrollHeight;
+
+      if (typeof consoleScrollRef.current.scrollTo === 'function') {
+        consoleScrollRef.current.scrollTo({
+          top: targetTop,
+          behavior: hasAutoScrolledConsoleRef.current ? 'smooth' : 'auto'
+        });
+      } else {
+        consoleScrollRef.current.scrollTop = targetTop;
+      }
+
+      hasAutoScrolledConsoleRef.current = true;
     }
   }, [logs]);
 
@@ -721,7 +733,7 @@ export default function LabyrinthGame({ phase, onActionComplete }: LabyrinthGame
   };
 
   return (
-    <div className="flex flex-col h-full bg-slate-900 border border-slate-800 rounded-xl overflow-hidden shadow-2xl relative">
+    <div className="flex min-h-0 flex-col h-full bg-slate-900 border border-slate-800 rounded-xl overflow-hidden shadow-2xl relative">
       {/* Visual Title Header */}
       <div className="p-4 bg-slate-950 border-b border-slate-800 flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="flex items-center gap-3">
@@ -836,10 +848,10 @@ export default function LabyrinthGame({ phase, onActionComplete }: LabyrinthGame
       </div>
 
       {/* Main Board View */}
-      <div className="flex-1 p-6 flex flex-col lg:flex-row gap-6 overflow-y-auto max-h-[520px] lg:max-h-none">
+      <div className="flex-1 min-h-0 p-4 sm:p-6 flex flex-col xl:flex-row gap-6 overflow-visible xl:overflow-y-auto">
         {/* COLUMN 1: GAME GRID CONTAINER */}
         <div className="flex-1 flex flex-col items-center justify-center min-w-0">
-          <div className="grid grid-cols-6 gap-2 p-3 bg-slate-950 border border-slate-800 rounded-xl relative">
+          <div className="grid grid-cols-6 gap-1.5 sm:gap-2 p-2.5 sm:p-3 bg-slate-950 border border-slate-800 rounded-xl relative max-w-full">
             
             {/* Draw Path Cables in DI Phase to make visual explicit links */}
             {phase === 'dependency_injection' && (
@@ -974,7 +986,7 @@ export default function LabyrinthGame({ phase, onActionComplete }: LabyrinthGame
                   key={`${x}-${y}`}
                   onClick={() => canMoveTo && moveCharacter(x - playerPosition.x, y - playerPosition.y)}
                   className={`
-                    w-14 h-14 rounded-lg border flex flex-col items-center justify-center transition-all relative select-none
+                    size-[clamp(2.75rem,11vw,3.5rem)] rounded-lg border flex flex-col items-center justify-center transition-all relative select-none
                     ${canMoveTo ? 'cursor-pointer hover:scale-[1.02]' : 'cursor-default'}
                     ${bgStyle} ${glowStyle}
                   `}
@@ -1004,7 +1016,7 @@ export default function LabyrinthGame({ phase, onActionComplete }: LabyrinthGame
 
                   {/* Test Snake Tail Bubble */}
                   {isTestingRunning && isSnakeTrailPart && !isSnakeHead && (
-                    <div className={`absolute w-3.5 h-3.5 rounded-full ${
+                    <div className={`absolute size-3.5 rounded-full ${
                       phase === 'dependency_injection'
                         ? 'bg-emerald-500/60 shadow-[0_0_4px_#10b981]'
                         : isTestResetInjected
@@ -1022,7 +1034,7 @@ export default function LabyrinthGame({ phase, onActionComplete }: LabyrinthGame
                         animate={{ scale: 1, rotate: 0 }}
                         exit={{ scale: 0.6 }}
                         transition={{ type: "spring", stiffness: 300, damping: 20 }}
-                        className="absolute inset-1.5 bg-amber-500 rounded-md border border-slate-950 shadow-lg text-slate-950 flex items-center justify-center flex-col z-10"
+                        className="absolute inset-1 bg-amber-500 rounded-md border border-slate-950 shadow-lg text-slate-950 flex items-center justify-center flex-col z-10"
                       >
                         <span className="text-[10px] font-mono leading-none tracking-tighter">DEV</span>
                         <Zap className="w-3 h-3 fill-slate-950 mt-0.5" />
@@ -1254,7 +1266,7 @@ export default function LabyrinthGame({ phase, onActionComplete }: LabyrinthGame
         </div>
 
         {/* COLUMN 2: INTERACTIVE PHASE CHALLENGE GUIDES */}
-        <div className="w-full lg:w-72 xl:w-80 shrink-0 border-t lg:border-t-0 lg:border-l border-slate-800 pt-6 lg:pt-0 lg:pl-6 flex flex-col justify-between">
+        <div className="w-full xl:w-80 shrink-0 border-t xl:border-t-0 xl:border-l border-slate-800 pt-6 xl:pt-0 xl:pl-6 flex flex-col justify-between">
           <div className="space-y-4">
             <span className="text-xs font-mono font-medium uppercase text-amber-500 tracking-wider">Phase Challenge</span>
             
@@ -1404,7 +1416,7 @@ export default function LabyrinthGame({ phase, onActionComplete }: LabyrinthGame
           </button>
         </div>
         
-        <div className="h-28 bg-slate-900/80 border border-slate-800/80 p-2.5 rounded-lg overflow-y-auto font-mono text-xs text-slate-400 space-y-1">
+        <div ref={consoleScrollRef} className="h-28 bg-slate-900/80 border border-slate-800/80 p-2.5 rounded-lg overflow-y-auto font-mono text-xs text-slate-400 space-y-1">
           {logs.length === 0 ? (
             <div className="text-slate-600 italic text-center pt-8 text-[11px]">Console idle. Push keys/arrows or walk about to trigger trace signals...</div>
           ) : (
@@ -1440,7 +1452,6 @@ export default function LabyrinthGame({ phase, onActionComplete }: LabyrinthGame
               );
             })
           )}
-          <div ref={consoleEndRef} />
         </div>
       </div>
     </div>

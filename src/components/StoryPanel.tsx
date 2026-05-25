@@ -39,7 +39,7 @@ export default function StoryPanel({
   const isBadgeUnlocked = unlockedBadges.includes(currentChapter.interactiveChallenge.badgeName);
 
   return (
-    <div className="flex flex-col h-full bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm">
+    <div className="flex min-h-0 flex-col h-full bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm">
       {/* Chapter Index Tracker */}
       <div className="p-4 bg-slate-50 border-b border-slate-100 flex items-center justify-between">
         <div className="flex items-center gap-2">
@@ -59,7 +59,7 @@ export default function StoryPanel({
       </div>
 
       {/* Main Content Reading Area */}
-      <div className="flex-1 p-6 md:p-8 overflow-y-auto max-h-[520px] lg:max-h-none">
+      <div className="flex-1 min-h-0 p-6 md:p-8 overflow-visible xl:overflow-y-auto">
         <AnimatePresence mode="wait">
           <motion.div
             key={currentChapter.id}

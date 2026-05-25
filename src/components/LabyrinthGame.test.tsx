@@ -46,4 +46,28 @@ describe('LabyrinthGame', () => {
 
     expect((screen.getByRole('checkbox') as HTMLInputElement).checked).toBe(false);
   });
+
+  it('keeps the initial console autoscroll inside the log panel', async () => {
+    const originalScrollTo = HTMLElement.prototype.scrollTo;
+    const scrollToMock = vi.fn();
+    const scrollIntoViewSpy = vi.spyOn(HTMLElement.prototype, 'scrollIntoView').mockImplementation(() => {});
+
+    Object.defineProperty(HTMLElement.prototype, 'scrollTo', {
+      configurable: true,
+      value: scrollToMock
+    });
+
+    render(<LabyrinthGame phase="classic_corridor" onActionComplete={vi.fn()} />);
+
+    await waitFor(() => {
+      expect(scrollToMock).toHaveBeenCalled();
+    });
+
+    expect(scrollIntoViewSpy).not.toHaveBeenCalled();
+
+    Object.defineProperty(HTMLElement.prototype, 'scrollTo', {
+      configurable: true,
+      value: originalScrollTo
+    });
+  });
 });
