@@ -229,15 +229,6 @@ export default function LabyrinthGame({ phase, onActionComplete }: LabyrinthGame
   const gridMap = useMemo(() => getGridMap(), [difficulty, phase]);
   const consoleScrollRef = useRef<HTMLDivElement>(null);
   const hasAutoScrolledConsoleRef = useRef(false);
-  const currentTile = useMemo(
-    () => gridMap[playerPosition.y][playerPosition.x],
-    [gridMap, playerPosition.x, playerPosition.y]
-  );
-  const currentTrapdoorId = useMemo(
-    () => currentTile?.type === 'trapdoor' ? currentTile.trapdoorId : undefined,
-    [currentTile]
-  );
-
   // --- LOGGING UTILITY ---
   const addLog = (type: GameLog['type'], message: string, details?: string) => {
     const timestamp = new Date().toLocaleTimeString();
@@ -298,7 +289,7 @@ export default function LabyrinthGame({ phase, onActionComplete }: LabyrinthGame
     if (phase === 'classic_corridor') {
       addLog('info', 'Clean environment instantiated. Navigate using corridors (Arrow keys or clicking buttons/cells). No hidden ports.');
     } else if (phase === 'first_shortcut') {
-      addLog('info', 'A green Database trapdoor has appeared at cell (1, 1). Step onto it, then trigger Jump (or press Enter/Space) if you really want the shortcut to fire.');
+      addLog('info', 'A green Database trapdoor has appeared at cell (1, 1). Step onto it once and it yanks you straight through five corridors.');
     } else if (phase === 'folklore_chaos') {
       addLog('warning', 'Multiple singletons detected. Mutable global variables are active. Activating a portal changes global runtime variables.');
       addLog('info', 'CurrentUser::instance() is live at (3,0). tenantId() is live at (4,1).');
@@ -319,7 +310,7 @@ export default function LabyrinthGame({ phase, onActionComplete }: LabyrinthGame
     }
   }, [phase]);
 
-  const activateTrapdoor = (trapdoorId: string) => {
+  const activateTrapdoor = (trapdoorId: string, originPosition?: Position) => {
     const config = TRAPDOORS_CONFIG[trapdoorId];
     if (!config) {
       addLog('error', `Trapdoor activation failed: no configuration found for "${trapdoorId}".`);
@@ -328,9 +319,10 @@ export default function LabyrinthGame({ phase, onActionComplete }: LabyrinthGame
 
     let finalX = config.target.x;
     let finalY = config.target.y;
+    const sourcePosition = originPosition ?? playerPosition;
 
     if (phase === 'first_shortcut') {
-      addLog('success', `⚡ Trapdoor triggered: ${config.name}! Bypassed 5 long corridors!`, `Telemetry: Teleported from (${playerPosition.x}, ${playerPosition.y}) to (${finalX}, ${finalY})`);
+      addLog('success', `⚡ Trapdoor triggered: ${config.name}! Bypassed 5 long corridors!`, `Telemetry: Teleported from (${sourcePosition.x}, ${sourcePosition.y}) to (${finalX}, ${finalY})`);
       onActionComplete('Instant Teleporter');
     } else if (phase === 'folklore_chaos') {
       if (config.id === 'user_hole') {
@@ -408,8 +400,9 @@ export default function LabyrinthGame({ phase, onActionComplete }: LabyrinthGame
     if (targetCell.type === 'trapdoor' && targetCell.trapdoorId) {
       const config = TRAPDOORS_CONFIG[targetCell.trapdoorId];
       if (config) {
-        addLog('info', `Trapdoor discovered: ${config.name}. You are standing on it now; trigger Jump (or press Enter/Space) to activate the hidden shortcut.`, config.description);
+        addLog('warning', `Trapdoor discovered: ${config.name}. Contact auto-triggered the hidden shortcut immediately.`, config.description);
       }
+      return activateTrapdoor(targetCell.trapdoorId, { x: nextX, y: nextY });
     }
 
     // Phase 4 Map Lying specific bug: Attempting to walk to Room B (3,4) 
@@ -480,13 +473,6 @@ export default function LabyrinthGame({ phase, onActionComplete }: LabyrinthGame
         case 'D':
           e.preventDefault();
           moveCharacter(1, 0);
-          break;
-        case ' ':
-        case 'Enter':
-          e.preventDefault();
-          if (currentTrapdoorId) {
-            activateTrapdoor(currentTrapdoorId);
-          }
           break;
       }
     };
@@ -1085,22 +1071,12 @@ export default function LabyrinthGame({ phase, onActionComplete }: LabyrinthGame
               >
                 <ArrowLeft className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform" />
               </button>
-              <button
-                onClick={() => {
-                  if (currentTrapdoorId) {
-                    activateTrapdoor(currentTrapdoorId);
-                  }
-                }}
-                disabled={!currentTrapdoorId}
-                title={currentTrapdoorId ? 'Activate the trapdoor under your feet' : 'Stand on a trapdoor to enable jump'}
-                className={`w-10 h-10 rounded-lg flex items-center justify-center text-[10px] font-mono font-bold border transition-all ${
-                  currentTrapdoorId
-                    ? 'bg-emerald-500/10 border-emerald-500/40 text-emerald-400 hover:bg-emerald-500/20 active:scale-95'
-                    : 'bg-slate-900/50 border-transparent text-slate-600 cursor-not-allowed'
-                }`}
+              <div
+                title="Singleton trapdoors auto-fire the moment you touch them"
+                className="w-10 h-10 rounded-lg flex items-center justify-center text-[10px] font-mono font-bold border bg-emerald-500/10 border-emerald-500/20 text-emerald-400/80"
               >
-                JUMP
-              </button>
+                AUTO
+              </div>
               <button 
                 onClick={() => moveCharacter(1, 0)}
                 className="w-10 h-10 bg-slate-950 border border-slate-800 hover:border-slate-700 active:bg-slate-900 rounded-lg flex items-center justify-center text-slate-300 shadow-md group transition-all"
@@ -1116,7 +1092,7 @@ export default function LabyrinthGame({ phase, onActionComplete }: LabyrinthGame
                 <ArrowDown className="w-4 h-4 group-hover:translate-y-0.5 transition-transform" />
               </button>
             </div>
-            <span className="text-[10px] font-mono text-slate-500 mt-2">Keyboard Arrow Keys/W-A-S-D move. Enter/Space activates a trapdoor.</span>
+            <span className="text-[10px] font-mono text-slate-500 mt-2">Keyboard Arrow Keys/W-A-S-D move. Singleton trapdoors auto-fire on contact.</span>
           </div>
 
           {/* INTEGRATED TESTING CABINET (Unified Labs + State-Space Matrix) */}
@@ -1292,7 +1268,7 @@ export default function LabyrinthGame({ phase, onActionComplete }: LabyrinthGame
               <div className="bg-slate-950 border border-slate-800 p-4 rounded-xl space-y-2">
                 <h4 className="text-sm font-semibold text-slate-200 text-emerald-400">The Convenient Bait</h4>
                 <p className="text-xs text-slate-400">
-                  Step onto cell <strong className="text-emerald-400">DB (1,1)</strong>, then choose whether to trigger the shortcut. No more involuntary teleport nonsense.
+                  Step onto cell <strong className="text-emerald-400">DB (1,1)</strong> and get yanked away instantly. Hidden shortcuts do not wait for consent.
                 </p>
                 <div className="flex items-center gap-2 p-1.5 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 rounded text-[11px]">
                   <Zap className="w-3 h-3 text-emerald-400" /> Convenient, but dangerous.
