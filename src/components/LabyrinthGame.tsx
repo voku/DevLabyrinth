@@ -28,7 +28,7 @@ interface LabyrinthGameProps {
 
 // 6x6 Grid Configuration
 const GRID_SIZE = 6;
-const SUPPORTS_ELEMENT_SCROLL_TO = typeof Element !== 'undefined' && 'scrollTo' in Element.prototype;
+const HAS_ELEMENT_SCROLL_TO = typeof Element !== 'undefined' && 'scrollTo' in Element.prototype;
 
 // Trapdoors configuration
 const TRAPDOORS_CONFIG: Record<string, Trapdoor> = {
@@ -259,7 +259,7 @@ export default function LabyrinthGame({ phase, onActionComplete }: LabyrinthGame
         0
       );
 
-      if (SUPPORTS_ELEMENT_SCROLL_TO) {
+      if (HAS_ELEMENT_SCROLL_TO) {
         consoleScrollRef.current.scrollTo({
           top: targetTop,
           behavior: hasAutoScrolledConsoleRef.current ? 'smooth' : 'auto'

@@ -76,13 +76,13 @@ describe('LabyrinthGame', () => {
       if (originalScrollHeight) {
         Object.defineProperty(HTMLElement.prototype, 'scrollHeight', originalScrollHeight);
       } else {
-        delete (HTMLElement.prototype as { scrollHeight?: number }).scrollHeight;
+        Reflect.deleteProperty(HTMLElement.prototype, 'scrollHeight');
       }
 
       if (originalClientHeight) {
         Object.defineProperty(HTMLElement.prototype, 'clientHeight', originalClientHeight);
       } else {
-        delete (HTMLElement.prototype as { clientHeight?: number }).clientHeight;
+        Reflect.deleteProperty(HTMLElement.prototype, 'clientHeight');
       }
     }
   });
