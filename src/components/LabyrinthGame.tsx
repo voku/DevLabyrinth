@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   Compass, 
@@ -231,7 +231,7 @@ export default function LabyrinthGame({ phase, onActionComplete }: LabyrinthGame
   const consoleScrollRef = useRef<HTMLDivElement>(null);
   const hasAutoScrolledConsoleRef = useRef(false);
   // --- LOGGING UTILITY ---
-  const addLog = (type: GameLog['type'], message: string, details?: string) => {
+  const addLog = useCallback((type: GameLog['type'], message: string, details?: string) => {
     const timestamp = new Date().toLocaleTimeString();
     const newLog: GameLog = {
       id: Math.random().toString(36).substring(3),
@@ -241,7 +241,7 @@ export default function LabyrinthGame({ phase, onActionComplete }: LabyrinthGame
       details
     };
     setLogs(prev => [...prev.slice(-40), newLog]); // Keep last 40 logs
-  };
+  }, []);
 
   // Scroll console to bottom on changes
   useEffect(() => {
@@ -312,7 +312,7 @@ export default function LabyrinthGame({ phase, onActionComplete }: LabyrinthGame
     }
   }, [phase]);
 
-  const activateTrapdoor = (trapdoorId: string, originPosition?: Position) => {
+  const activateTrapdoor = useCallback((trapdoorId: string, originPosition?: Position) => {
     const config = TRAPDOORS_CONFIG[trapdoorId];
     if (!config) {
       addLog('error', `Trapdoor activation failed: no configuration found for "${trapdoorId}".`);
@@ -362,12 +362,12 @@ export default function LabyrinthGame({ phase, onActionComplete }: LabyrinthGame
     }
 
     return { x: finalX, y: finalY };
-  };
+  }, [addLog, globalTenantState, gridMap, onActionComplete, phase, playerPosition, stepSequence]);
 
   const handleTrapdoorContact = (trapdoorId: string, trapdoorPosition: Position) => {
     const config = TRAPDOORS_CONFIG[trapdoorId];
     if (config) {
-      addLog('warning', `Trapdoor discovered: ${config.name}. Contact auto-triggered the hidden shortcut immediately.`, config.description);
+      addLog('warning', `Trapdoor discovered: ${config.name}. Contact detected — preparing the automatic shortcut now.`, config.description);
     }
 
     setPlayerPosition(trapdoorPosition);
