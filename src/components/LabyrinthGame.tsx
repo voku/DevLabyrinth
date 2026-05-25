@@ -28,6 +28,7 @@ interface LabyrinthGameProps {
 
 // 6x6 Grid Configuration
 const GRID_SIZE = 6;
+const SUPPORTS_ELEMENT_SCROLL_TO = typeof Element !== 'undefined' && 'scrollTo' in Element.prototype;
 
 // Trapdoors configuration
 const TRAPDOORS_CONFIG: Record<string, Trapdoor> = {
@@ -258,7 +259,7 @@ export default function LabyrinthGame({ phase, onActionComplete }: LabyrinthGame
         0
       );
 
-      if (typeof consoleScrollRef.current.scrollTo === 'function') {
+      if (SUPPORTS_ELEMENT_SCROLL_TO) {
         consoleScrollRef.current.scrollTo({
           top: targetTop,
           behavior: hasAutoScrolledConsoleRef.current ? 'smooth' : 'auto'
@@ -1419,7 +1420,11 @@ export default function LabyrinthGame({ phase, onActionComplete }: LabyrinthGame
           </button>
         </div>
         
-        <div ref={consoleScrollRef} className="h-28 bg-slate-900/80 border border-slate-800/80 p-2.5 rounded-lg overflow-y-auto font-mono text-xs text-slate-400 space-y-1">
+        <div
+          ref={consoleScrollRef}
+          aria-label="Stack Trace Console Output"
+          className="h-28 bg-slate-900/80 border border-slate-800/80 p-2.5 rounded-lg overflow-y-auto font-mono text-xs text-slate-400 space-y-1"
+        >
           {logs.length === 0 ? (
             <div className="text-slate-600 italic text-center pt-8 text-[11px]">Console idle. Push keys/arrows or walk about to trigger trace signals...</div>
           ) : (

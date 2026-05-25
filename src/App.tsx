@@ -101,7 +101,7 @@ export default function App() {
       </header>
 
       {/* Main Container Layout */}
-      <main className="flex-1 max-w-7xl w-full mx-auto p-4 md:p-6 flex flex-col xl:flex-row gap-6 items-stretch justify-start xl:h-[min(840px,calc(100dvh-15rem))] h-auto">
+      <main className="flex-1 max-w-7xl w-full mx-auto p-4 md:p-6 flex flex-col xl:flex-row gap-6 items-stretch justify-start xl:h-[min(840px,calc(100vh-15rem))] xl:h-[min(840px,calc(100dvh-15rem))] h-auto">
         
         {/* LEFT COLUMN: INTERACTIVE LABYRINTH BOARD MODULE */}
         <div className="flex-[4] flex min-h-0 flex-col justify-stretch xl:h-full">
