@@ -21,15 +21,31 @@ describe('LabyrinthGame', () => {
     press('ArrowRight');
     press('ArrowRight');
     press('ArrowRight');
-    press('Enter');
 
-    expect(getAmbientRegister()).toBeTruthy();
+    await waitFor(() => {
+      expect(getAmbientRegister()).toBeTruthy();
+    });
 
     rerender(<LabyrinthGame phase="map_lying" onActionComplete={onActionComplete} />);
 
     await waitFor(() => {
       expect(getEmptyAmbientRegister()).toBeTruthy();
     });
+  });
+
+  it('auto-jumps as soon as the player steps onto a trapdoor', async () => {
+    const onActionComplete = vi.fn();
+    render(<LabyrinthGame phase="first_shortcut" onActionComplete={onActionComplete} />);
+
+    press('ArrowRight');
+    press('ArrowDown');
+
+    await waitFor(() => {
+      expect(screen.getByText(/Trapdoor triggered: Database::instance\(\)!/)).toBeTruthy();
+    });
+
+    expect(onActionComplete).toHaveBeenCalledTimes(1);
+    expect(onActionComplete).toHaveBeenCalledWith('Instant Teleporter');
   });
 
   it('clears the testing reset hook when leaving and re-entering the testing phase', async () => {

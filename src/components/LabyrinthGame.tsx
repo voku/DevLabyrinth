@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   Compass, 
@@ -98,6 +98,7 @@ export default function LabyrinthGame({ phase, onActionComplete }: LabyrinthGame
   const [activeCombIndex, setActiveCombIndex] = useState<number>(0);
   const [testRunnerStep, setTestRunnerStep] = useState<number>(-1);
   const [activeRunTestIdx, setActiveRunTestIdx] = useState<number>(-1);
+  const [pendingTrapdoorJump, setPendingTrapdoorJump] = useState<{ trapdoorId: string; position: Position } | null>(null);
 
   // Animates combinatorial test runner tracing
   useEffect(() => {
@@ -229,17 +230,8 @@ export default function LabyrinthGame({ phase, onActionComplete }: LabyrinthGame
   const gridMap = useMemo(() => getGridMap(), [difficulty, phase]);
   const consoleScrollRef = useRef<HTMLDivElement>(null);
   const hasAutoScrolledConsoleRef = useRef(false);
-  const currentTile = useMemo(
-    () => gridMap[playerPosition.y][playerPosition.x],
-    [gridMap, playerPosition.x, playerPosition.y]
-  );
-  const currentTrapdoorId = useMemo(
-    () => currentTile?.type === 'trapdoor' ? currentTile.trapdoorId : undefined,
-    [currentTile]
-  );
-
   // --- LOGGING UTILITY ---
-  const addLog = (type: GameLog['type'], message: string, details?: string) => {
+  const addLog = useCallback((type: GameLog['type'], message: string, details?: string) => {
     const timestamp = new Date().toLocaleTimeString();
     const newLog: GameLog = {
       id: Math.random().toString(36).substring(3),
@@ -249,7 +241,7 @@ export default function LabyrinthGame({ phase, onActionComplete }: LabyrinthGame
       details
     };
     setLogs(prev => [...prev.slice(-40), newLog]); // Keep last 40 logs
-  };
+  }, []);
 
   // Scroll console to bottom on changes
   useEffect(() => {
@@ -290,6 +282,7 @@ export default function LabyrinthGame({ phase, onActionComplete }: LabyrinthGame
     setActiveCombIndex(0);
     setTestRunnerStep(-1);
     setActiveRunTestIdx(-1);
+    setPendingTrapdoorJump(null);
     
     // Initial informational logs
     setLogs([]);
@@ -298,7 +291,7 @@ export default function LabyrinthGame({ phase, onActionComplete }: LabyrinthGame
     if (phase === 'classic_corridor') {
       addLog('info', 'Clean environment instantiated. Navigate using corridors (Arrow keys or clicking buttons/cells). No hidden ports.');
     } else if (phase === 'first_shortcut') {
-      addLog('info', 'A green Database trapdoor has appeared at cell (1, 1). Step onto it, then trigger Jump (or press Enter/Space) if you really want the shortcut to fire.');
+      addLog('info', 'A green Database trapdoor has appeared at cell (1, 1). Step onto it once and it yanks you straight through five corridors.');
     } else if (phase === 'folklore_chaos') {
       addLog('warning', 'Multiple singletons detected. Mutable global variables are active. Activating a portal changes global runtime variables.');
       addLog('info', 'CurrentUser::instance() is live at (3,0). tenantId() is live at (4,1).');
@@ -319,7 +312,7 @@ export default function LabyrinthGame({ phase, onActionComplete }: LabyrinthGame
     }
   }, [phase]);
 
-  const activateTrapdoor = (trapdoorId: string) => {
+  const activateTrapdoor = useCallback((trapdoorId: string, originPosition?: Position) => {
     const config = TRAPDOORS_CONFIG[trapdoorId];
     if (!config) {
       addLog('error', `Trapdoor activation failed: no configuration found for "${trapdoorId}".`);
@@ -328,9 +321,10 @@ export default function LabyrinthGame({ phase, onActionComplete }: LabyrinthGame
 
     let finalX = config.target.x;
     let finalY = config.target.y;
+    const sourcePosition = originPosition ?? playerPosition;
 
     if (phase === 'first_shortcut') {
-      addLog('success', `⚡ Trapdoor triggered: ${config.name}! Bypassed 5 long corridors!`, `Telemetry: Teleported from (${playerPosition.x}, ${playerPosition.y}) to (${finalX}, ${finalY})`);
+      addLog('success', `⚡ Trapdoor triggered: ${config.name}! Bypassed 5 long corridors!`, `Telemetry: Teleported from (${sourcePosition.x}, ${sourcePosition.y}) to (${finalX}, ${finalY})`);
       onActionComplete('Instant Teleporter');
     } else if (phase === 'folklore_chaos') {
       if (config.id === 'user_hole') {
@@ -368,6 +362,19 @@ export default function LabyrinthGame({ phase, onActionComplete }: LabyrinthGame
     }
 
     return { x: finalX, y: finalY };
+  }, [addLog, globalTenantState, gridMap, onActionComplete, phase, playerPosition, stepSequence]);
+
+  const handleTrapdoorContact = (trapdoorId: string, trapdoorPosition: Position) => {
+    const config = TRAPDOORS_CONFIG[trapdoorId];
+    if (config) {
+      addLog('warning', `Trapdoor discovered: ${config.name}. Contact detected — preparing the automatic shortcut now.`, config.description);
+    }
+
+    setPlayerPosition(trapdoorPosition);
+    const trapdoorName = gridMap[trapdoorPosition.y][trapdoorPosition.x].label || `Room (${trapdoorPosition.x}, ${trapdoorPosition.y})`;
+    setStepSequence(prev => [...prev, `${trapdoorName} (${trapdoorPosition.x}, ${trapdoorPosition.y})`]);
+    setVisitedCount(prev => prev + 1);
+    setPendingTrapdoorJump({ trapdoorId, position: trapdoorPosition });
   };
 
   // --- CORE MOVEMENT RESOLVER ---
@@ -406,10 +413,9 @@ export default function LabyrinthGame({ phase, onActionComplete }: LabyrinthGame
     let finalY = nextY;
 
     if (targetCell.type === 'trapdoor' && targetCell.trapdoorId) {
-      const config = TRAPDOORS_CONFIG[targetCell.trapdoorId];
-      if (config) {
-        addLog('info', `Trapdoor discovered: ${config.name}. You are standing on it now; trigger Jump (or press Enter/Space) to activate the hidden shortcut.`, config.description);
-      }
+      const trapdoorPosition = { x: nextX, y: nextY };
+      handleTrapdoorContact(targetCell.trapdoorId, trapdoorPosition);
+      return trapdoorPosition;
     }
 
     // Phase 4 Map Lying specific bug: Attempting to walk to Room B (3,4) 
@@ -451,10 +457,19 @@ export default function LabyrinthGame({ phase, onActionComplete }: LabyrinthGame
 
   // --- KEYBOARD LISTENER ---
   useEffect(() => {
+    if (!pendingTrapdoorJump) {
+      return;
+    }
+
+    activateTrapdoor(pendingTrapdoorJump.trapdoorId, pendingTrapdoorJump.position);
+    setPendingTrapdoorJump(null);
+  }, [pendingTrapdoorJump, activateTrapdoor]);
+
+  useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       // Ignore if user is writing in inputs (not applicable here, but good practice)
       if (['INPUT', 'TEXTAREA'].includes((e.target as HTMLElement).tagName)) return;
-      if (isTestingRunning) return;
+      if (isTestingRunning || pendingTrapdoorJump) return;
 
       switch (e.key) {
         case 'ArrowUp':
@@ -481,19 +496,12 @@ export default function LabyrinthGame({ phase, onActionComplete }: LabyrinthGame
           e.preventDefault();
           moveCharacter(1, 0);
           break;
-        case ' ':
-        case 'Enter':
-          e.preventDefault();
-          if (currentTrapdoorId) {
-            activateTrapdoor(currentTrapdoorId);
-          }
-          break;
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [playerPosition, phase, globalTenantState, isTestResetInjected, isTestingRunning]);
+  }, [playerPosition, phase, globalTenantState, isTestResetInjected, isTestingRunning, pendingTrapdoorJump]);
 
   // --- DIAGNOSTIC SCANNERS ---
   const runArcheologyScan = () => {
@@ -1085,22 +1093,12 @@ export default function LabyrinthGame({ phase, onActionComplete }: LabyrinthGame
               >
                 <ArrowLeft className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform" />
               </button>
-              <button
-                onClick={() => {
-                  if (currentTrapdoorId) {
-                    activateTrapdoor(currentTrapdoorId);
-                  }
-                }}
-                disabled={!currentTrapdoorId}
-                title={currentTrapdoorId ? 'Activate the trapdoor under your feet' : 'Stand on a trapdoor to enable jump'}
-                className={`w-10 h-10 rounded-lg flex items-center justify-center text-[10px] font-mono font-bold border transition-all ${
-                  currentTrapdoorId
-                    ? 'bg-emerald-500/10 border-emerald-500/40 text-emerald-400 hover:bg-emerald-500/20 active:scale-95'
-                    : 'bg-slate-900/50 border-transparent text-slate-600 cursor-not-allowed'
-                }`}
+              <div
+                title="Singleton trapdoors auto-fire the moment you touch them"
+                className="w-10 h-10 rounded-lg flex items-center justify-center text-[10px] font-mono font-bold border border-dashed border-slate-700 bg-slate-950/60 text-slate-500"
               >
-                JUMP
-              </button>
+                AUTO
+              </div>
               <button 
                 onClick={() => moveCharacter(1, 0)}
                 className="w-10 h-10 bg-slate-950 border border-slate-800 hover:border-slate-700 active:bg-slate-900 rounded-lg flex items-center justify-center text-slate-300 shadow-md group transition-all"
@@ -1116,7 +1114,7 @@ export default function LabyrinthGame({ phase, onActionComplete }: LabyrinthGame
                 <ArrowDown className="w-4 h-4 group-hover:translate-y-0.5 transition-transform" />
               </button>
             </div>
-            <span className="text-[10px] font-mono text-slate-500 mt-2">Keyboard Arrow Keys/W-A-S-D move. Enter/Space activates a trapdoor.</span>
+            <span className="text-[10px] font-mono text-slate-500 mt-2">Keyboard Arrow Keys/W-A-S-D move. Singleton trapdoors auto-fire on contact.</span>
           </div>
 
           {/* INTEGRATED TESTING CABINET (Unified Labs + State-Space Matrix) */}
@@ -1292,7 +1290,7 @@ export default function LabyrinthGame({ phase, onActionComplete }: LabyrinthGame
               <div className="bg-slate-950 border border-slate-800 p-4 rounded-xl space-y-2">
                 <h4 className="text-sm font-semibold text-slate-200 text-emerald-400">The Convenient Bait</h4>
                 <p className="text-xs text-slate-400">
-                  Step onto cell <strong className="text-emerald-400">DB (1,1)</strong>, then choose whether to trigger the shortcut. No more involuntary teleport nonsense.
+                  Step onto cell <strong className="text-emerald-400">DB (1,1)</strong> and get yanked away instantly. Hidden shortcuts do not wait for consent.
                 </p>
                 <div className="flex items-center gap-2 p-1.5 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 rounded text-[11px]">
                   <Zap className="w-3 h-3 text-emerald-400" /> Convenient, but dangerous.
