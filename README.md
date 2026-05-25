@@ -38,6 +38,7 @@ Run the existing project checks before opening a pull request:
 
 ```bash
 npm run lint
+npm test
 npm run build
 ```
 
