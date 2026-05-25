@@ -98,6 +98,7 @@ export default function LabyrinthGame({ phase, onActionComplete }: LabyrinthGame
   const [activeCombIndex, setActiveCombIndex] = useState<number>(0);
   const [testRunnerStep, setTestRunnerStep] = useState<number>(-1);
   const [activeRunTestIdx, setActiveRunTestIdx] = useState<number>(-1);
+  const [pendingTrapdoorJump, setPendingTrapdoorJump] = useState<{ trapdoorId: string; position: Position } | null>(null);
 
   // Animates combinatorial test runner tracing
   useEffect(() => {
@@ -229,7 +230,6 @@ export default function LabyrinthGame({ phase, onActionComplete }: LabyrinthGame
   const gridMap = useMemo(() => getGridMap(), [difficulty, phase]);
   const consoleScrollRef = useRef<HTMLDivElement>(null);
   const hasAutoScrolledConsoleRef = useRef(false);
-  const pendingTrapdoorJumpRef = useRef<number | null>(null);
   // --- LOGGING UTILITY ---
   const addLog = (type: GameLog['type'], message: string, details?: string) => {
     const timestamp = new Date().toLocaleTimeString();
@@ -266,11 +266,6 @@ export default function LabyrinthGame({ phase, onActionComplete }: LabyrinthGame
 
   // Handle phase transitions / initializes
   useEffect(() => {
-    if (pendingTrapdoorJumpRef.current !== null) {
-      window.clearTimeout(pendingTrapdoorJumpRef.current);
-      pendingTrapdoorJumpRef.current = null;
-    }
-
     // Reset player position when phase changes
     setPlayerPosition({ x: 0, y: 0 });
     setStepSequence(['Entrance (0,0)']);
@@ -287,6 +282,7 @@ export default function LabyrinthGame({ phase, onActionComplete }: LabyrinthGame
     setActiveCombIndex(0);
     setTestRunnerStep(-1);
     setActiveRunTestIdx(-1);
+    setPendingTrapdoorJump(null);
     
     // Initial informational logs
     setLogs([]);
@@ -315,12 +311,6 @@ export default function LabyrinthGame({ phase, onActionComplete }: LabyrinthGame
       addLog('success', 'Refactored clean corridors active! Dependency Injection binds explicit instances. AppConfig is static and safe.');
     }
   }, [phase]);
-
-  useEffect(() => () => {
-    if (pendingTrapdoorJumpRef.current !== null) {
-      window.clearTimeout(pendingTrapdoorJumpRef.current);
-    }
-  }, []);
 
   const activateTrapdoor = (trapdoorId: string, originPosition?: Position) => {
     const config = TRAPDOORS_CONFIG[trapdoorId];
@@ -374,6 +364,19 @@ export default function LabyrinthGame({ phase, onActionComplete }: LabyrinthGame
     return { x: finalX, y: finalY };
   };
 
+  const handleTrapdoorContact = (trapdoorId: string, trapdoorPosition: Position) => {
+    const config = TRAPDOORS_CONFIG[trapdoorId];
+    if (config) {
+      addLog('warning', `Trapdoor discovered: ${config.name}. Contact auto-triggered the hidden shortcut immediately.`, config.description);
+    }
+
+    setPlayerPosition(trapdoorPosition);
+    const trapdoorName = gridMap[trapdoorPosition.y][trapdoorPosition.x].label || `Room (${trapdoorPosition.x}, ${trapdoorPosition.y})`;
+    setStepSequence(prev => [...prev, `${trapdoorName} (${trapdoorPosition.x}, ${trapdoorPosition.y})`]);
+    setVisitedCount(prev => prev + 1);
+    setPendingTrapdoorJump({ trapdoorId, position: trapdoorPosition });
+  };
+
   // --- CORE MOVEMENT RESOLVER ---
   const moveCharacter = (dx: number, dy: number, overrideStart?: Position) => {
     // If testing suite is currently sweeping grid, block keyboard actions
@@ -410,25 +413,8 @@ export default function LabyrinthGame({ phase, onActionComplete }: LabyrinthGame
     let finalY = nextY;
 
     if (targetCell.type === 'trapdoor' && targetCell.trapdoorId) {
-      const config = TRAPDOORS_CONFIG[targetCell.trapdoorId];
-      if (config) {
-        addLog('warning', `Trapdoor discovered: ${config.name}. Contact auto-triggered the hidden shortcut immediately.`, config.description);
-      }
       const trapdoorPosition = { x: nextX, y: nextY };
-      setPlayerPosition(trapdoorPosition);
-      const trapdoorName = gridMap[nextY][nextX].label || `Room (${nextX}, ${nextY})`;
-      setStepSequence(prev => [...prev, `${trapdoorName} (${nextX}, ${nextY})`]);
-      setVisitedCount(prev => prev + 1);
-
-      if (pendingTrapdoorJumpRef.current !== null) {
-        window.clearTimeout(pendingTrapdoorJumpRef.current);
-      }
-
-      pendingTrapdoorJumpRef.current = window.setTimeout(() => {
-        pendingTrapdoorJumpRef.current = null;
-        activateTrapdoor(targetCell.trapdoorId!, trapdoorPosition);
-      }, 0);
-
+      handleTrapdoorContact(targetCell.trapdoorId, trapdoorPosition);
       return trapdoorPosition;
     }
 
@@ -471,10 +457,19 @@ export default function LabyrinthGame({ phase, onActionComplete }: LabyrinthGame
 
   // --- KEYBOARD LISTENER ---
   useEffect(() => {
+    if (!pendingTrapdoorJump) {
+      return;
+    }
+
+    activateTrapdoor(pendingTrapdoorJump.trapdoorId, pendingTrapdoorJump.position);
+    setPendingTrapdoorJump(null);
+  }, [pendingTrapdoorJump, activateTrapdoor]);
+
+  useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       // Ignore if user is writing in inputs (not applicable here, but good practice)
       if (['INPUT', 'TEXTAREA'].includes((e.target as HTMLElement).tagName)) return;
-      if (isTestingRunning) return;
+      if (isTestingRunning || pendingTrapdoorJump) return;
 
       switch (e.key) {
         case 'ArrowUp':
@@ -506,7 +501,7 @@ export default function LabyrinthGame({ phase, onActionComplete }: LabyrinthGame
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [playerPosition, phase, globalTenantState, isTestResetInjected, isTestingRunning]);
+  }, [playerPosition, phase, globalTenantState, isTestResetInjected, isTestingRunning, pendingTrapdoorJump]);
 
   // --- DIAGNOSTIC SCANNERS ---
   const runArcheologyScan = () => {
